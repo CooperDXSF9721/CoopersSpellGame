@@ -11,8 +11,33 @@ window.addEventListener("DOMContentLoaded", () => {
   canvas.height = window.innerHeight;
 
   let gameRunning = false;
+  let gameOver = false;
   let troops = [];
   let enemyTroops = [];
+
+  // 🎴 Elixir system
+  let playerElixir = 5;
+  let enemyElixir = 5;
+  const maxElixir = 10;
+
+  // UI: main elixir bar
+  const elixirBar = document.createElement("div");
+  elixirBar.style.position = "absolute";
+  elixirBar.style.bottom = "130px";
+  elixirBar.style.left = "50%";
+  elixirBar.style.transform = "translateX(-50%)";
+  elixirBar.style.width = "300px";
+  elixirBar.style.height = "20px";
+  elixirBar.style.background = "rgba(0,0,0,0.3)";
+  elixirBar.style.border = "2px solid white";
+  elixirBar.style.borderRadius = "10px";
+  elixirBar.style.overflow = "hidden";
+  const elixirFill = document.createElement("div");
+  elixirFill.style.height = "100%";
+  elixirFill.style.width = "50%";
+  elixirFill.style.background = "purple";
+  elixirBar.appendChild(elixirFill);
+  arena.appendChild(elixirBar);
 
   const towers = {
     player: [
@@ -28,52 +53,22 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   playBtn.addEventListener("click", () => {
-    console.log("▶️ Play button clicked");
     homeScreen.style.display = "none";
     arena.style.display = "block";
     startGame();
   });
 
   const troopTypes = {
-    barbarians: {
-      count: 5,
-      hp: 150,
-      dmg: 30,
-      speed: 1.2,
-      range: 20,
-      target: "both",
-      color: "orange"
-    },
-    archer: {
-      count: 2,
-      hp: 100,
-      dmg: 25,
-      speed: 1.1,
-      range: 120,
-      target: "both",
-      color: "pink"
-    },
-    giant: {
-      count: 1,
-      hp: 800,
-      dmg: 75,
-      speed: 0.8,
-      range: 20,
-      target: "towers",
-      color: "brown"
-    },
-    "mini-pekka": {
-      count: 1,
-      hp: 600,
-      dmg: 150,
-      speed: 1.5,
-      range: 20,
-      target: "both",
-      color: "blue"
-    }
+    barbarians: { count: 5, hp: 150, dmg: 30, speed: 1.2, range: 20, target: "both", color: "orange", cost: 5 },
+    archer: { count: 2, hp: 100, dmg: 25, speed: 1.1, range: 120, target: "both", color: "pink", cost: 3 },
+    giant: { count: 1, hp: 800, dmg: 75, speed: 0.8, range: 20, target: "towers", color: "brown", cost: 5 },
+    "mini-pekka": { count: 1, hp: 600, dmg: 150, speed: 1.5, range: 20, target: "both", color: "blue", cost: 4 }
   };
 
-  document.querySelectorAll(".card").forEach(card => {
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  // 🎴 Card click events
+  cards.forEach(card => {
     card.addEventListener("click", () => {
       const type = card.dataset.type;
       deployTroop(type, "player");
@@ -82,6 +77,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function deployTroop(type, owner) {
     const troopData = troopTypes[type];
+    if (!troopData) return;
+
+    // Check elixir
+    if (owner === "player" && playerElixir < troopData.cost) return;
+    if (owner === "enemy" && enemyElixir < troopData.cost) return;
+
+    if (owner === "player") playerElixir -= troopData.cost;
+    else enemyElixir -= troopData.cost;
+
     const spawnY = owner === "player" ? canvas.height - 150 : 150;
     const spawnX = canvas.width / 2 + (Math.random() * 200 - 100);
 
@@ -102,29 +106,60 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 🧠 AI Logic
   function enemyAI() {
+    if (enemyElixir < 3) return;
     if (Math.random() < 0.01) {
-      const options = Object.keys(troopTypes);
-      const choice = options[Math.floor(Math.random() * options.length)];
-      deployTroop(choice, "enemy");
+      const affordable = Object.keys(troopTypes).filter(t => troopTypes[t].cost <= enemyElixir);
+      if (affordable.length > 0) {
+        const choice = affordable[Math.floor(Math.random() * affordable.length)];
+        deployTroop(choice, "enemy");
+      }
     }
+  }
+
+  // 💜 Elixir Regeneration
+  function updateElixir() {
+    if (playerElixir < maxElixir) playerElixir += 0.02;
+    if (enemyElixir < maxElixir) enemyElixir += 0.02;
+    elixirFill.style.width = `${(playerElixir / maxElixir) * 100}%`;
+    updateCardBars();
+  }
+
+  // Update each card's mini progress bar
+  function updateCardBars() {
+    cards.forEach(card => {
+      const type = card.dataset.type;
+      const troop = troopTypes[type];
+      const bar = card.querySelector(".elixir-bar-under");
+      const percent = Math.min((playerElixir / troop.cost) * 100, 100);
+      bar.style.width = `${percent}%`;
+      bar.style.background = percent >= 100 ? "purple" : "rgba(128,0,128,0.6)";
+    });
   }
 
   function startGame() {
     gameRunning = true;
+    gameOver = false;
+    playerElixir = 5;
+    enemyElixir = 5;
     loop();
   }
 
   function loop() {
     if (!gameRunning) return;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTowers();
     updateTroops(troops, enemyTroops);
     updateTroops(enemyTroops, troops);
     drawTroops(troops);
     drawTroops(enemyTroops);
+    updateElixir();
     enemyAI();
-    requestAnimationFrame(loop);
+    checkWinCondition();
+
+    if (!gameOver) requestAnimationFrame(loop);
   }
 
   function drawTowers() {
@@ -181,5 +216,26 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
     return nearest;
+  }
+
+  function checkWinCondition() {
+    const playerAlive = towers.player.some(t => t.hp > 0);
+    const enemyAlive = towers.enemy.some(t => t.hp > 0);
+
+    if (!enemyAlive) {
+      endGame("🎉 You Win!");
+    } else if (!playerAlive) {
+      endGame("💀 You Lose!");
+    }
+  }
+
+  function endGame(message) {
+    gameOver = true;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.font = "60px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(message, canvas.width / 2, canvas.height / 2);
   }
 });
