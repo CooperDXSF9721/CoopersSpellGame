@@ -1,179 +1,110 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Mini Royale — Prototype</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clash Royale Clone</title>
   <style>
-    :root{
-      --bg:#0b1220;
-      --panel:#0f1724;
-      --accent:#3ddc84;
-      --muted:#9aa4b2;
-      --card:#14202b;
-    }
-    html,body{
-      height:100%;
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(180deg,#071022 0%, #071b2b 100%);
-      color: #e6eef6;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-user-select:none;
-      user-select:none;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
     }
 
-    /* layout */
-    #app { display:flex; align-items:center; justify-content:center; height:100vh; padding:16px; box-sizing:border-box; }
+    body {
+      background: #1e1e1e;
+      font-family: sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+
+    #home-screen {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #142850, #27496d);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    #play-btn {
+      background: #00a8cc;
+      color: white;
+      border: none;
+      font-size: 2em;
+      padding: 20px 40px;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    #play-btn:hover {
+      background: #007ea7;
+    }
+
+    #arena {
+      display: none;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #6b8e23, #3b5323);
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #card-bar {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100px;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+    }
+
     .card {
-      width:100%;
-      max-width:940px;
-      height:100%;
-      max-height:760px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border-radius:16px;
-      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
+      width: 70px;
+      height: 90px;
+      background: #00a8cc;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
     }
 
-    /* top bar */
-    .topbar { padding:12px 16px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); }
-    .title { font-size:18px; font-weight:600; letter-spacing:0.2px; }
-    .muted { color:var(--muted); font-size:13px; }
-
-    /* center game area */
-    .game-container { flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
-
-    canvas { width:100%; height:100%; display:block; background: linear-gradient(180deg,#0b2130, #05202b); }
-
-    /* HUD & controls */
-    .hud {
-      position:absolute;
-      left:50%;
-      transform:translateX(-50%);
-      bottom:8px;
-      width:calc(100% - 40px);
-      max-width:880px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      pointer-events:none;
-    }
-
-    .hand {
-      pointer-events:auto;
-      display:flex;
-      gap:10px;
-      padding:8px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.22), rgba(255,255,255,0.02));
-      border-radius:10px;
-      align-items:center;
-    }
-    .card-slot {
-      width:72px;
-      height:96px;
-      border-radius:8px;
-      background:var(--card);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      padding:8px;
-      box-sizing:border-box;
-      color: #eaf5ee;
-      font-size:12px;
-      text-align:center;
-      cursor:pointer;
-      user-select:none;
-    }
-    .card-slot.disabled {
-      opacity:0.45;
-      cursor:not-allowed;
-    }
-    .elixir {
-      min-width:64px;
-      height:48px;
-      border-radius:8px;
-      background: linear-gradient(180deg,#1d2d42, #112033);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:700;
-      font-size:18px;
-      pointer-events:auto;
-    }
-
-    /* home screen overlay */
-    #home {
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.65));
-      z-index:40;
-      flex-direction:column;
-      gap:18px;
-      padding:20px;
-    }
-    .big-btn {
-      background:linear-gradient(180deg,var(--accent), #24b86a);
-      color:#022014;
-      padding:14px 28px;
-      border-radius:12px;
-      font-weight:700;
-      font-size:18px;
-      border:none;
-      cursor:pointer;
-      box-shadow:0 8px 18px rgba(55,160,110,0.25);
-    }
-    .small {
-      color:var(--muted);
-      font-size:14px;
-    }
-
-    @media (max-width:520px){
-      .card { border-radius:10px; }
-      .card-slot { width:60px; height:84px; font-size:11px; }
-      .elixir { font-size:16px; min-width:56px; height:44px; }
+    .card:hover {
+      background: #007ea7;
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <div class="card" role="application" aria-label="Mini Royale game">
-      <div class="topbar">
-        <div class="title">Mini Royale (Prototype)</div>
-        <div class="muted">Prototype — single web page</div>
-      </div>
+  <div id="home-screen">
+    <h1>Clash Royale Clone</h1>
+    <button id="play-btn">Play</button>
+  </div>
 
-      <div class="game-container">
-        <canvas id="gameCanvas" width="960" height="540"></canvas>
-
-        <!-- HUD -->
-        <div class="hud">
-          <div class="hand" id="playerHand" aria-hidden="false"></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="elixir" id="elixirDisplay">0</div>
-          </div>
-        </div>
-
-        <!-- Home overlay -->
-        <div id="home">
-          <h1 style="margin:0; font-size:28px;">Mini Royale</h1>
-          <p class="small" style="margin:0 0 6px 0; text-align:center; max-width:360px;">A small Clash Royale–style demo (touch & click). Play against an AI that evaluates your plays and responds.</p>
-          <button class="big-btn" id="playBtn">Play</button>
-          <div style="display:flex; gap:8px;">
-            <button id="easyBtn" class="small">Easy</button>
-            <button id="normalBtn" class="small">Normal</button>
-            <button id="hardBtn" class="small">Hard</button>
-          </div>
-        </div>
-
-      </div>
+  <div id="arena">
+    <canvas id="gameCanvas"></canvas>
+    <div id="card-bar">
+      <div class="card" data-type="barbarians">Barbs</div>
+      <div class="card" data-type="archer">Archer</div>
+      <div class="card" data-type="giant">Giant</div>
+      <div class="card" data-type="mini-pekka">Mini P.E.K.K.A</div>
     </div>
   </div>
 
