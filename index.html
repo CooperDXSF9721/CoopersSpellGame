@@ -3,153 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modular Spell Arena - Game</title>
+    <title>Modular Spell Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: serif;
-            overflow: hidden;
-            background: linear-gradient(to bottom right, #1a1a1a, #2d1810);
         }
-        
-        #gameCanvas {
-            display: block;
-            background: #1a1510;
-            border: 4px solid #78350f;
+        @keyframes pulse-border {
+            0%, 100% { border-color: #ef4444; }
+            50% { border-color: #dc2626; }
         }
-        
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #d97706;
-            font-size: 18px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-        }
-        
-        #weaponUI {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            background: rgba(41, 37, 36, 0.9);
-            padding: 15px 30px;
-            border-radius: 15px;
-            border: 3px solid #78350f;
-        }
-        
-        .weapon-slot {
-            width: 60px;
-            height: 60px;
-            background: rgba(28, 25, 23, 0.8);
-            border: 2px solid #57534e;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .weapon-slot:hover {
-            border-color: #d97706;
-            transform: scale(1.1);
-        }
-        
-        .weapon-slot.active {
-            border-color: #f59e0b;
-            background: rgba(217, 119, 6, 0.3);
-            box-shadow: 0 0 20px rgba(217, 119, 6, 0.5);
-        }
-        
-        .spell-slot {
-            width: 50px;
-            height: 50px;
-            background: rgba(28, 25, 23, 0.8);
-            border: 2px solid #57534e;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: #d97706;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .spell-slot:hover {
-            border-color: #d97706;
-            transform: scale(1.05);
-        }
-        
-        .spell-slot.active {
-            border-color: #f59e0b;
-            background: rgba(217, 119, 6, 0.3);
-        }
-        
-        #spellUI {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: 100px;
-            left: 20px;
-            color: #92400e;
-            font-size: 14px;
-            background: rgba(41, 37, 36, 0.8);
-            padding: 10px 15px;
-            border-radius: 10px;
-            border: 2px solid #78350f;
+        .animate-pulse-border {
+            animation: pulse-border 1s ease-in-out infinite;
         }
     </style>
 </head>
-<body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui">
-        <div>Health: <span id="health">100</span></div>
-        <div>Enemies Defeated: <span id="score">0</span></div>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-stone-900 to-amber-950 text-white p-4">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-5xl font-bold text-center mb-2 text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">
+            ⚔️ Modular Spell Arena ⚔️
+        </h1>
+        <p class="text-center text-amber-700 mb-8">Craft Your Ultimate Spells</p>
+
+        <!-- Spell Slot Selector -->
+        <div id="spellSlots" class="grid grid-cols-4 gap-4 mb-8"></div>
+
+        <!-- Palette Grid -->
+        <div class="bg-stone-800/80 backdrop-blur rounded-2xl p-8 border-2 border-amber-900/50 mb-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-amber-600" id="paletteTitle">Spell 1 Palette</h2>
+                <button id="clearBtn" class="px-4 py-2 bg-red-900 hover:bg-red-800 rounded-lg flex items-center gap-2 transition-colors border border-red-700">
+                    🗑️ Clear All
+                </button>
+            </div>
+
+            <div class="flex items-center justify-center gap-8">
+                <!-- Aura 1 -->
+                <div class="flex flex-col items-center gap-2">
+                    <div class="text-sm font-semibold text-red-400">A1</div>
+                    <div id="aura1" class="tile-slot cursor-pointer" data-type="aura1"></div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="relative pb-8">
+                    <div id="mainGrid" class="grid grid-cols-4 grid-rows-2 gap-4"></div>
+                    <svg id="connectionLines" class="absolute inset-0 pointer-events-none" style="width: calc(100% + 80px); height: 100%; left: -40px;"></svg>
+                </div>
+
+                <!-- Aura 2 -->
+                <div class="flex flex-col items-center gap-2">
+                    <div class="text-sm font-semibold text-red-400">A2</div>
+                    <div id="aura2" class="tile-slot cursor-pointer" data-type="aura2"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-stone-900/50 rounded-lg border-2 border-amber-900/30">
+                <div class="text-sm text-amber-700">
+                    <strong class="text-amber-500">💡 Tips:</strong> Execution order: 1→2→3→4→8→7→6→5. 
+                    Purple lines = valid. Red dashed = invalid. Pulsing red = incomplete (needs spell after).
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div id="legend" class="grid grid-cols-6 gap-3 mb-6"></div>
+
+        <!-- Enter Arena Button -->
+        <div class="text-center">
+            <button id="enterArena" class="px-10 py-5 bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-800 hover:to-orange-800 rounded-xl text-2xl font-bold shadow-lg shadow-amber-900/50 transition-all transform hover:scale-105 border-2 border-amber-900">
+                ⚔️ Enter Arena ⚔️
+            </button>
+        </div>
     </div>
-    
-    <div id="spellUI">
-        <div class="spell-slot active" data-spell="0">S1</div>
-        <div class="spell-slot" data-spell="1">S2</div>
-        <div class="spell-slot" data-spell="2">S3</div>
-        <div class="spell-slot" data-spell="3">S4</div>
+
+    <!-- Tile Selection Modal -->
+    <div id="tileModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+        <div class="min-h-screen flex items-start justify-center p-4 pt-8">
+            <div class="bg-stone-800 rounded-2xl p-6 max-w-6xl w-full border-2 border-amber-900/50 my-4 shadow-2xl">
+                <div class="flex justify-between items-center mb-6 sticky top-0 bg-stone-800 z-10 pb-4">
+                    <h3 class="text-3xl font-bold text-amber-600">Select Tile</h3>
+                    <button id="closeModal" class="p-2 hover:bg-stone-700 rounded-lg transition-colors text-2xl">✕</button>
+                </div>
+                <div id="tileCategories" class="space-y-6"></div>
+            </div>
+        </div>
     </div>
-    
-    <div id="weaponUI">
-        <div class="weapon-slot" data-weapon="fists" title="Fists">👊</div>
-        <div class="weapon-slot active" data-weapon="sword" title="Sword">⚔️</div>
-        <div class="weapon-slot" data-weapon="bow" title="Bow & Arrow">🏹</div>
-        <div class="weapon-slot" data-weapon="spell" title="Magic">✨</div>
-    </div>
-    
-    <div id="controls">
-        <div><strong>Controls:</strong></div>
-        <div>WASD - Move</div>
-        <div>Mouse - Aim</div>
-        <div>Click - Attack</div>
-        <div>1-4 - Switch Weapon</div>
-        <div>Q/E - Switch Spell</div>
-        <div>R - Imbue Weapon</div>
-    </div>
-    
-    <script src="game.js"></script>
+
+    <script src="spellbuilder.js"></script>
 </body>
 </html>
