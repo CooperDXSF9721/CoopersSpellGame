@@ -13,83 +13,143 @@ const executionOrder = [0, 1, 2, 3, 7, 6, 5, 4];
 
 // Three.js setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1510);
-scene.fog = new THREE.Fog(0x1a1510, 50, 200);
+scene.background = new THREE.Color(0x2d2520);
+scene.fog = new THREE.Fog(0x2d2520, 20, 60);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('gameCanvas').appendChild(renderer.domElement);
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(50, 100, 50);
-directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = 2048;
-directionalLight.shadow.mapSize.height = 2048;
-scene.add(directionalLight);
+const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+mainLight.position.set(10, 20, 10);
+mainLight.castShadow = true;
+mainLight.shadow.mapSize.width = 2048;
+mainLight.shadow.mapSize.height = 2048;
+mainLight.shadow.camera.near = 0.5;
+mainLight.shadow.camera.far = 50;
+mainLight.shadow.camera.left = -25;
+mainLight.shadow.camera.right = 25;
+mainLight.shadow.camera.top = 25;
+mainLight.shadow.camera.bottom = -25;
+scene.add(mainLight);
 
-// Arena floor
-const floorGeometry = new THREE.CircleGeometry(50, 32);
+// Create a room
+const roomSize = 30;
+const wallHeight = 8;
+
+// Floor
+const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
 const floorMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0x3d2817,
-    roughness: 0.8,
-    metalness: 0.2
+    color: 0x4a3428,
+    roughness: 0.9,
+    metalness: 0.1
 });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Arena walls (invisible collision)
-const wallHeight = 10;
-const wallGeometry = new THREE.CylinderGeometry(50, 50, wallHeight, 32, 1, true);
-const wallMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0x78350f,
-    transparent: true,
-    opacity: 0.3,
+// Ceiling
+const ceilingMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x3a2820,
+    roughness: 0.9,
     side: THREE.DoubleSide
 });
-const walls = new THREE.Mesh(wallGeometry, wallMaterial);
-walls.position.y = wallHeight / 2;
-scene.add(walls);
+const ceiling = new THREE.Mesh(floorGeometry, ceilingMaterial);
+ceiling.rotation.x = -Math.PI / 2;
+ceiling.position.y = wallHeight;
+ceiling.receiveShadow = true;
+scene.add(ceiling);
+
+// Walls
+const wallMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x5a4438,
+    roughness: 0.8
+});
+
+// North wall
+const wallGeometry = new THREE.PlaneGeometry(roomSize, wallHeight);
+const northWall = new THREE.Mesh(wallGeometry, wallMaterial);
+northWall.position.set(0, wallHeight/2, -roomSize/2);
+northWall.receiveShadow = true;
+northWall.castShadow = true;
+scene.add(northWall);
+
+// South wall
+const southWall = new THREE.Mesh(wallGeometry, wallMaterial);
+southWall.position.set(0, wallHeight/2, roomSize/2);
+southWall.rotation.y = Math.PI;
+southWall.receiveShadow = true;
+southWall.castShadow = true;
+scene.add(southWall);
+
+// East wall
+const eastWall = new THREE.Mesh(wallGeometry, wallMaterial);
+eastWall.position.set(roomSize/2, wallHeight/2, 0);
+eastWall.rotation.y = -Math.PI/2;
+eastWall.receiveShadow = true;
+eastWall.castShadow = true;
+scene.add(eastWall);
+
+// West wall
+const westWall = new THREE.Mesh(wallGeometry, wallMaterial);
+westWall.position.set(-roomSize/2, wallHeight/2, 0);
+westWall.rotation.y = Math.PI/2;
+westWall.receiveShadow = true;
+westWall.castShadow = true;
+scene.add(westWall);
+
+// Add some torches on walls for atmosphere
+function createTorch(x, y, z) {
+    const torchLight = new THREE.PointLight(0xff6600, 1, 15);
+    torchLight.position.set(x, y, z);
+    torchLight.castShadow = true;
+    scene.add(torchLight);
+    
+    const torchGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 8);
+    const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const torch = new THREE.Mesh(torchGeometry, torchMaterial);
+    torch.position.set(x, y, z);
+    scene.add(torch);
+}
+
+createTorch(-12, 5, -12);
+createTorch(12, 5, -12);
+createTorch(-12, 5, 12);
+createTorch(12, 5, 12);
 
 // Player
-const playerGeometry = new THREE.CapsuleGeometry(0.5, 1.5, 4, 8);
-const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.set(0, 1.5, 0);
-player.castShadow = true;
-scene.add(player);
-
-// Camera setup (first person)
-camera.position.set(0, 3, 0);
+camera.position.set(0, 2, 0);
 camera.rotation.order = 'YXZ';
 
 // Game state
 const game = {
     player: {
-        position: new THREE.Vector3(0, 1.5, 0),
+        position: new THREE.Vector3(0, 2, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         rotation: { yaw: 0, pitch: 0 },
         onGround: true,
-        speed: 10,
-        jumpForce: 8,
+        speed: 8,
+        jumpForce: 6,
         weapon: 'sword',
         currentSpell: 0,
-        imbuedWeapon: null
+        height: 2
     },
     projectiles: [],
     particles: [],
     keys: {},
-    mouse: { x: 0, y: 0, locked: false },
+    mouse: { locked: false },
     score: 0,
     lastAttack: 0,
-    attackCooldown: 500
+    attackCooldown: 500,
+    roomSize: 30
 };
 
 // Input handling
@@ -102,21 +162,15 @@ document.addEventListener('keydown', (e) => {
     if (e.key === '1') switchWeapon('fists');
     if (e.key === '2') switchWeapon('sword');
     if (e.key === '3') switchWeapon('bow');
-    if (e.key === '4') switchWeapon('spell');
     
     // Spell switching
-    if (e.key === 'q') {
+    if (e.key.toLowerCase() === 'q') {
         game.player.currentSpell = (game.player.currentSpell - 1 + 4) % 4;
         updateSpellUI();
     }
-    if (e.key === 'e') {
+    if (e.key.toLowerCase() === 'e') {
         game.player.currentSpell = (game.player.currentSpell + 1) % 4;
         updateSpellUI();
-    }
-    
-    // Imbue weapon
-    if (e.key === 'r') {
-        imbueWeapon();
     }
 });
 
@@ -135,13 +189,32 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
-document.addEventListener('click', () => {
+// Auto-lock pointer on page load
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        renderer.domElement.requestPointerLock();
+    }, 100);
+});
+
+// Click to lock if not locked
+renderer.domElement.addEventListener('click', () => {
     if (!game.mouse.locked) {
         renderer.domElement.requestPointerLock();
-    } else {
-        attack();
     }
 });
+
+// Left click - weapon attack
+document.addEventListener('mousedown', (e) => {
+    if (!game.mouse.locked) return;
+    if (e.button === 0) { // Left click
+        attack();
+    } else if (e.button === 2) { // Right click
+        castSpell();
+    }
+});
+
+// Prevent right-click menu
+document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 document.addEventListener('pointerlockchange', () => {
     game.mouse.locked = document.pointerLockElement === renderer.domElement;
@@ -151,6 +224,7 @@ document.addEventListener('pointerlockchange', () => {
 document.querySelectorAll('.weapon-slot').forEach(slot => {
     slot.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         switchWeapon(slot.dataset.weapon);
     });
 });
@@ -158,6 +232,7 @@ document.querySelectorAll('.weapon-slot').forEach(slot => {
 document.querySelectorAll('.spell-slot').forEach(slot => {
     slot.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         game.player.currentSpell = parseInt(slot.dataset.spell);
         updateSpellUI();
     });
@@ -176,21 +251,6 @@ function updateSpellUI() {
     });
 }
 
-function imbueWeapon() {
-    const currentSpell = customSpells[game.player.currentSpell];
-    if (!currentSpell || !currentSpell.palette.some(t => t)) return;
-    
-    const hasImbue = currentSpell.palette.some(tile => 
-        tile && tile.category && tile.category.type === 'spellType' && 
-        (tile.id === 'imbue-hit' || tile.id === 'imbue-use')
-    );
-    
-    if (hasImbue) {
-        game.player.imbuedWeapon = game.player.currentSpell;
-        createParticles(game.player.position.clone(), 0xf59e0b, 20);
-    }
-}
-
 function attack() {
     const now = Date.now();
     if (now - game.lastAttack < game.attackCooldown) return;
@@ -207,10 +267,21 @@ function attack() {
         case 'bow':
             shootArrow(direction);
             break;
-        case 'spell':
-            castSpell(direction);
-            break;
     }
+}
+
+function castSpell() {
+    const now = Date.now();
+    if (now - game.lastAttack < game.attackCooldown) return;
+    game.lastAttack = now;
+    
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(camera.quaternion);
+    
+    const spellData = customSpells[game.player.currentSpell];
+    if (!spellData || !spellData.palette.some(t => t)) return;
+    
+    triggerSpellEffect(game.player.position.clone(), direction, game.player.currentSpell);
 }
 
 function meleeAttack(direction) {
@@ -225,9 +296,13 @@ function shootArrow(direction) {
     const arrowMaterial = new THREE.MeshStandardMaterial({ color: 0x92400e });
     const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
     
-    arrow.position.copy(game.player.position);
-    arrow.position.y += 0.5;
+    arrow.position.copy(camera.position);
     arrow.castShadow = true;
+    
+    // Orient arrow in direction of travel
+    arrow.lookAt(camera.position.clone().add(direction));
+    arrow.rotateX(Math.PI / 2);
+    
     scene.add(arrow);
     
     game.projectiles.push({
@@ -238,13 +313,6 @@ function shootArrow(direction) {
         lifetime: 5000,
         createdAt: Date.now()
     });
-}
-
-function castSpell(direction) {
-    const spellData = customSpells[game.player.currentSpell];
-    if (!spellData || !spellData.palette.some(t => t)) return;
-    
-    triggerSpellEffect(game.player.position.clone(), direction, game.player.currentSpell);
 }
 
 function triggerSpellEffect(position, direction, spellIndex) {
@@ -333,12 +401,11 @@ function createProjectile(position, direction, color, speed, size, homing = fals
     const material = new THREE.MeshStandardMaterial({ 
         color: color,
         emissive: color,
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.8
     });
     const projectile = new THREE.Mesh(geometry, material);
     
-    position.y += 0.5;
-    projectile.position.copy(position);
+    projectile.position.copy(camera.position);
     projectile.castShadow = true;
     scene.add(projectile);
     
@@ -462,30 +529,23 @@ function update() {
     }
     
     // Gravity
-    game.player.velocity.y -= 20 * delta;
+    game.player.velocity.y -= 25 * delta;
     game.player.position.y += game.player.velocity.y * delta;
     
     // Ground collision
-    if (game.player.position.y <= 1.5) {
-        game.player.position.y = 1.5;
+    if (game.player.position.y <= game.player.height) {
+        game.player.position.y = game.player.height;
         game.player.velocity.y = 0;
         game.player.onGround = true;
     }
     
-    // Keep player in arena
-    const distFromCenter = Math.sqrt(
-        game.player.position.x ** 2 + game.player.position.z ** 2
-    );
-    if (distFromCenter > 48) {
-        const angle = Math.atan2(game.player.position.z, game.player.position.x);
-        game.player.position.x = Math.cos(angle) * 48;
-        game.player.position.z = Math.sin(angle) * 48;
-    }
+    // Keep player in room bounds
+    const halfRoom = game.roomSize / 2 - 1;
+    game.player.position.x = Math.max(-halfRoom, Math.min(halfRoom, game.player.position.x));
+    game.player.position.z = Math.max(-halfRoom, Math.min(halfRoom, game.player.position.z));
     
     // Update camera position
-    camera.position.copy(game.player.position);
-    camera.position.y += 1.5;
-    
+    camera.position.copy(game.player.position);    
     // Update projectiles
     game.projectiles.forEach((proj, index) => {
         proj.mesh.position.add(proj.velocity.clone().multiplyScalar(delta));
@@ -497,9 +557,11 @@ function update() {
             return;
         }
         
-        // Remove if out of bounds
-        const dist = proj.mesh.position.length();
-        if (dist > 100) {
+        // Remove if hits walls
+        const halfRoom = game.roomSize / 2;
+        if (Math.abs(proj.mesh.position.x) > halfRoom || 
+            Math.abs(proj.mesh.position.z) > halfRoom ||
+            proj.mesh.position.y < 0 || proj.mesh.position.y > 10) {
             scene.remove(proj.mesh);
             game.projectiles.splice(index, 1);
         }
@@ -515,9 +577,6 @@ function update() {
             game.particles.splice(index, 1);
         }
     });
-    
-    // Update player mesh position
-    player.position.copy(game.player.position);
 }
 
 function animate() {
