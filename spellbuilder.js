@@ -139,16 +139,29 @@ function renderPalette() {
     document.getElementById('aura1').innerHTML = createTileHTML(spell.aura1, -1, null, 'aura1', true);
     document.getElementById('aura2').innerHTML = createTileHTML(spell.aura2, -1, null, 'aura2', true);
     
-    // Add click handlers
-    document.querySelectorAll('.tile-slot').forEach(el => {
+    // Add click handlers to main grid tiles
+    grid.querySelectorAll('.tile-cell').forEach(el => {
         el.addEventListener('click', (e) => {
             if (e.target.classList.contains('clear-tile-btn')) return;
             selectedCell = {
-                type: el.dataset.type,
-                index: parseInt(el.dataset.index || -1)
+                type: 'palette',
+                index: parseInt(el.dataset.index)
             };
             openModal();
         });
+    });
+    
+    // Add click handlers to aura slots
+    document.getElementById('aura1').addEventListener('click', (e) => {
+        if (e.target.classList.contains('clear-tile-btn')) return;
+        selectedCell = { type: 'aura1', index: -1 };
+        openModal();
+    });
+    
+    document.getElementById('aura2').addEventListener('click', (e) => {
+        if (e.target.classList.contains('clear-tile-btn')) return;
+        selectedCell = { type: 'aura2', index: -1 };
+        openModal();
     });
     
     renderConnections();
@@ -159,21 +172,21 @@ function createTileHTML(tile, gridIdx, execOrder, type, small = false) {
     
     if (!tile) {
         return `
-            <div class="relative mb-8" data-type="${type}" data-index="${gridIdx}">
+            <div class="tile-cell relative mb-8 cursor-pointer" data-type="${type}" data-index="${gridIdx}">
                 ${execOrder !== null ? `<div class="absolute -top-2 -left-2 w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold text-gray-300 z-10">${execOrder + 1}</div>` : ''}
-                <button class="${small ? 'w-12 h-12' : 'w-16 h-16'} border-2 border-dashed border-gray-600 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 hover:border-gray-500 transition-all flex items-center justify-center text-gray-600">
+                <div class="${small ? 'w-12 h-12' : 'w-16 h-16'} border-2 border-dashed border-gray-600 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 hover:border-gray-500 transition-all flex items-center justify-center text-gray-600">
                     +
-                </button>
+                </div>
             </div>
         `;
     }
     
     return `
-        <div class="relative mb-8 group" data-type="${type}" data-index="${gridIdx}">
+        <div class="tile-cell relative mb-8 group cursor-pointer" data-type="${type}" data-index="${gridIdx}">
             ${execOrder !== null ? `<div class="absolute -top-2 -left-2 w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center text-xs font-bold text-white z-10">${execOrder + 1}</div>` : ''}
-            <button class="${small ? 'w-12 h-12' : 'w-16 h-16'} ${tile.category.color} border-2 ${incomplete ? 'border-red-500 animate-pulse-border' : tile.category.borderColor} rounded-lg flex items-center justify-center text-2xl hover:scale-105 transition-all shadow-lg">
+            <div class="${small ? 'w-12 h-12' : 'w-16 h-16'} ${tile.category.color} border-2 ${incomplete ? 'border-red-500 animate-pulse-border' : tile.category.borderColor} rounded-lg flex items-center justify-center text-2xl hover:scale-105 transition-all shadow-lg">
                 ${tile.icon}
-            </button>
+            </div>
             ${incomplete ? '<div class="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-xs font-bold text-red-400 whitespace-nowrap pointer-events-none">Incomplete</div>' : ''}
             <button onclick="clearTile('${type}', ${gridIdx}); event.stopPropagation();" class="clear-tile-btn absolute -top-2 -right-2 w-5 h-5 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 text-xs">✕</button>
             <div class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">${tile.name}</div>
