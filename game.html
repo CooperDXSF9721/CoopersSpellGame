@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modular Spell Arena - 3D Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #d97706;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #78350f;
+        }
+        
+        #weaponUI {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: rgba(41, 37, 36, 0.9);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 3px solid #78350f;
+        }
+        
+        .weapon-slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(28, 25, 23, 0.8);
+            border: 2px solid #57534e;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .weapon-slot:hover {
+            border-color: #d97706;
+            transform: scale(1.1);
+        }
+        
+        .weapon-slot.active {
+            border-color: #f59e0b;
+            background: rgba(217, 119, 6, 0.3);
+            box-shadow: 0 0 20px rgba(217, 119, 6, 0.5);
+        }
+        
+        .spell-slot {
+            width: 50px;
+            height: 50px;
+            background: rgba(28, 25, 23, 0.8);
+            border: 2px solid #57534e;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #d97706;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spell-slot:hover {
+            border-color: #d97706;
+            transform: scale(1.05);
+        }
+        
+        .spell-slot.active {
+            border-color: #f59e0b;
+            background: rgba(217, 119, 6, 0.3);
+        }
+        
+        #spellUI {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            color: #92400e;
+            font-size: 14px;
+            background: rgba(41, 37, 36, 0.8);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid #78350f;
+        }
+        
+        #backBtn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: rgba(120, 53, 15, 0.9);
+            color: #d97706;
+            border: 2px solid #78350f;
+            border-radius: 8px;
+            font-family: serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+        
+        #backBtn:hover {
+            background: rgba(180, 83, 9, 0.9);
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #f59e0b;
+        }
+
+        #crosshair::before {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            transform: translateX(-50%);
+        }
+
+        #crosshair::after {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameCanvas"></div>
+    
+    <button id="backBtn" onclick="window.location.href='index.html'">⬅️ Back to Spell Builder</button>
+    
+    <div id="crosshair"></div>
+    
+    <div id="ui">
+        <div><strong>Testing Mode</strong></div>
+        <div>Score: <span id="score">0</span></div>
+        <div style="margin-top:10px; font-size:14px; color:#92400e;">No enemies - test your spells!</div>
+    </div>
+    
+    <div id="spellUI">
+        <div class="spell-slot active" data-spell="0">S1</div>
+        <div class="spell-slot" data-spell="1">S2</div>
+        <div class="spell-slot" data-spell="2">S3</div>
+        <div class="spell-slot" data-spell="3">S4</div>
+    </div>
+    
+    <div id="weaponUI">
+        <div class="weapon-slot" data-weapon="fists" title="Fists">👊</div>
+        <div class="weapon-slot active" data-weapon="sword" title="Sword">⚔️</div>
+        <div class="weapon-slot" data-weapon="bow" title="Bow & Arrow">🏹</div>
+        <div class="weapon-slot" data-weapon="spell" title="Magic">✨</div>
+    </div>
+    
+    <div id="controls">
+        <div><strong>Controls:</strong></div>
+        <div>WASD - Move</div>
+        <div>Mouse - Look Around</div>
+        <div>Click - Attack/Cast</div>
+        <div>Space - Jump</div>
+        <div>1-4 - Switch Weapon</div>
+        <div>Q/E - Switch Spell</div>
+        <div>R - Imbue Weapon</div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game3d.js"></script>
+</body>
+</html>
