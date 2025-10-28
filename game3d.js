@@ -359,44 +359,48 @@ function triggerSpellEffect(position, direction, spellIndex) {
 
 function castSingleSpell(position, direction, spell, modifiers) {
     const hasHoming = modifiers.some(m => m.id === 'homing');
+    const hasGuided = modifiers.some(m => m.id === 'guided');
+    const hasWeightless = modifiers.some(m => m.id === 'weightless');
+    const hasArcTrail = modifiers.some(m => m.id === 'arc-trail');
+    const hasMoltenTrail = modifiers.some(m => m.id === 'molten-trail');
     
-    let color, speed, size;
+    let color, speed, size, hasGravity;
     
     switch (spell.id) {
         case 'fireball':
-            color = 0xf97316;
+            color = 0xff5722;
             speed = 20;
-            size = 0.5;
+            size = 0.3;
+            hasGravity = !hasWeightless;
             break;
         case 'explosion':
             createExplosion(position);
             return;
         case 'meteor':
-            color = 0xdc2626;
+            color = 0xb71c1c;
             speed = 15;
-            size = 0.8;
+            size = 0.6;
+            hasGravity = !hasWeightless;
             break;
         case 'thunderbolt':
-            color = 0xfbbf24;
-            speed = 40;
-            size = 0.3;
-            break;
-        case 'beam':
-            createBeam(position, direction);
+            createLightning(position, direction);
             return;
-        case 'fire-spark':
-            color = 0xfb923c;
-            speed = 25;
-            size = 0.3;
-            break;
         default:
             return;
     }
     
-    createProjectile(position, direction, color, speed, size, hasHoming);
+    createProjectile(position, direction, color, speed, size, hasHoming, hasGuided, hasGravity, hasArcTrail, hasMoltenTrail);
 }
 
-function createProjectile(position, direction, color, speed, size, homing = false) {
+function castAtPosition(position, spell, modifiers) {
+    // For CAST spell type - creates effect at position
+    if (spell.id === 'explosion') {
+        createExplosion(position);
+    }
+    // Effects are handled separately
+}
+
+function createProjectile(position, direction, color, speed, size, homing, guided, hasGravity, arcTrail, moltenTrail) {
     const geometry = new THREE.SphereGeometry(size, 16, 16);
     const material = new THREE.MeshStandardMaterial({ 
         color: color,
@@ -409,7 +413,7 @@ function createProjectile(position, direction, color, speed, size, homing = fals
     projectile.castShadow = true;
     scene.add(projectile);
     
-    // Add point light to projectile
+    // Add point light
     const light = new THREE.PointLight(color, 2, 10);
     projectile.add(light);
     
@@ -419,6 +423,12 @@ function createProjectile(position, direction, color, speed, size, homing = fals
         type: 'spell',
         damage: 50,
         homing: homing,
+        guided: guided,
+        hasGravity: hasGravity,
+        arcTrail: arcTrail,
+        moltenTrail: moltenTrail,
+        lastTrailTime: Date.now(),
+        guidedDirection: direction.clone(),
         lifetime: 10000,
         createdAt: Date.now()
     });
@@ -487,6 +497,26 @@ function createParticles(position, color, count) {
     }
 }
 
+function createFallingParticle(position, color) {
+    const geometry = new THREE.SphereGeometry(0.15, 8, 8);
+    const material = new THREE.MeshBasicMaterial({ 
+        color: color,
+        emissive: color,
+        emissiveIntensity: 0.5
+    });
+    const particle = new THREE.Mesh(geometry, material);
+    
+    particle.position.copy(position);
+    scene.add(particle);
+    
+    game.particles.push({
+        mesh: particle,
+        velocity: new THREE.Vector3(0, -2, 0),
+        lifetime: 2000,
+        createdAt: Date.now()
+    });
+}
+
 // Update loop
 const clock = new THREE.Clock();
 
@@ -548,6 +578,31 @@ function update() {
     camera.position.copy(game.player.position);    
     // Update projectiles
     game.projectiles.forEach((proj, index) => {
+        // Gravity
+        if (proj.hasGravity) {
+            proj.velocity.y -= 15 * delta;
+        }
+        
+        // Guided modifier - follows crosshair
+        if (proj.guided) {
+            const cameraDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            proj.velocity.lerp(cameraDir.multiplyScalar(proj.velocity.length()), 0.1);
+        }
+        
+        // Homing - needs enemies (not implemented yet, falls normally)
+        
+        // Arc trail
+        if (proj.arcTrail && Date.now() - proj.lastTrailTime > 50) {
+            createParticles(proj.mesh.position.clone(), 0xffff00, 2);
+            proj.lastTrailTime = Date.now();
+        }
+        
+        // Molten trail
+        if (proj.moltenTrail && Date.now() - proj.lastTrailTime > 50) {
+            const particle = createFallingParticle(proj.mesh.position.clone(), 0xff5722);
+            proj.lastTrailTime = Date.now();
+        }
+        
         proj.mesh.position.add(proj.velocity.clone().multiplyScalar(delta));
         
         // Remove if lifetime exceeded
@@ -557,11 +612,19 @@ function update() {
             return;
         }
         
+        // Hit ground
+        if (proj.mesh.position.y < 0) {
+            createParticles(proj.mesh.position.clone(), proj.mesh.material.color.getHex(), 10);
+            scene.remove(proj.mesh);
+            game.projectiles.splice(index, 1);
+            return;
+        }
+        
         // Remove if hits walls
         const halfRoom = game.roomSize / 2;
         if (Math.abs(proj.mesh.position.x) > halfRoom || 
             Math.abs(proj.mesh.position.z) > halfRoom ||
-            proj.mesh.position.y < 0 || proj.mesh.position.y > 10) {
+            proj.mesh.position.y > 10) {
             scene.remove(proj.mesh);
             game.projectiles.splice(index, 1);
         }
