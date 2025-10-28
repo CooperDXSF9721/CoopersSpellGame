@@ -20,9 +20,7 @@ const tileCategories = {
             { id: 'fireball', name: 'Fireball', icon: '🔥' },
             { id: 'explosion', name: 'Explosion', icon: '💥' },
             { id: 'meteor', name: 'Meteor', icon: '☄️' },
-            { id: 'thunderbolt', name: 'Thunderbolt', icon: '⚡' },
-            { id: 'beam', name: 'Beam', icon: '〰️' },
-            { id: 'fire-spark', name: 'Fire Spark', icon: '✨' }
+            { id: 'thunderbolt', name: 'Thunderbolt', icon: '⚡' }
         ]
     },
     modifiers: {
@@ -38,6 +36,23 @@ const tileCategories = {
             { id: 'molten-trail', name: 'Molten Trail', icon: '🌋' }
         ]
     },
+    numericalMods: {
+        name: 'Numerical Modifiers',
+        color: 'bg-purple-500',
+        borderColor: 'border-purple-500',
+        type: 'numericalMod',
+        tiles: [
+            { id: 'multi-shot-1', name: 'Multi-Shot x1', icon: '1×', value: 1 },
+            { id: 'multi-shot-2', name: 'Multi-Shot x2', icon: '2×', value: 2 },
+            { id: 'multi-shot-3', name: 'Multi-Shot x3', icon: '3×', value: 3 },
+            { id: 'multi-shot-5', name: 'Multi-Shot x5', icon: '5×', value: 5 },
+            { id: 'multi-shot-10', name: 'Multi-Shot x10', icon: '10×', value: 10 },
+            { id: 'sequence-shot-2', name: 'Double Shot', icon: '2→', value: 2 },
+            { id: 'sequence-shot-3', name: 'Triple Shot', icon: '3→', value: 3 },
+            { id: 'sequence-shot-5', name: 'Quintuple Shot', icon: '5→', value: 5 },
+            { id: 'sequence-shot-10', name: 'Decuple Shot', icon: '10→', value: 10 }
+        ]
+    },
     triggers: {
         name: 'Triggers',
         color: 'bg-green-500',
@@ -45,34 +60,25 @@ const tileCategories = {
         type: 'trigger',
         tiles: [
             { id: 'cast-on-hit', name: 'Cast On Hit', icon: '→' },
-            { id: 'cast-on-pierce', name: 'Cast On Pierce', icon: '⇉' },
-            { id: 'cast-after-delay', name: 'Cast After Delay', icon: '⏱️' },
+            { id: 'cast-after-delay-0.5', name: 'Delay 0.5s', icon: '⏱️.5', delay: 0.5 },
+            { id: 'cast-after-delay-1', name: 'Delay 1s', icon: '⏱️1', delay: 1 },
+            { id: 'cast-after-delay-2', name: 'Delay 2s', icon: '⏱️2', delay: 2 },
+            { id: 'cast-after-delay-5', name: 'Delay 5s', icon: '⏱️5', delay: 5 },
+            { id: 'cast-after-delay-10', name: 'Delay 10s', icon: '⏱️10', delay: 10 },
             { id: 'twin-cast', name: 'Twin Cast', icon: '👯' }
         ]
     },
-    status: {
+    effects: {
         name: 'Effects',
         color: 'bg-blue-600',
         borderColor: 'border-blue-600',
-        type: 'status',
+        type: 'effect',
         tiles: [
-            { id: 'burning', name: 'Burning', icon: '🔥' },
-            { id: 'frozen', name: 'Frozen', icon: '❄️' },
-            { id: 'floating', name: 'Floating', icon: '🎈' },
-            { id: 'shock', name: 'Shock', icon: '⚡' },
-            { id: 'slow', name: 'Slow', icon: '🐌' }
-        ]
-    },
-    castTypes: {
-        name: 'Cast Modifiers',
-        color: 'bg-yellow-500',
-        borderColor: 'border-yellow-500',
-        type: 'castType',
-        tiles: [
-            { id: 'duplicate', name: 'Duplicate', icon: '×2' },
-            { id: 'triplicate', name: 'Triplicate', icon: '×3' },
-            { id: 'quintuplicate', name: 'Quintuplicate', icon: '×5' },
-            { id: 'decuplicate', name: 'Decuplicate', icon: '×10' }
+            { id: 'burning', name: 'Burning Circle', icon: '🔥' },
+            { id: 'frozen', name: 'Frozen Circle', icon: '❄️' },
+            { id: 'antigravity', name: 'Antigravity Circle', icon: '🎈' },
+            { id: 'shock', name: 'Shock Circle', icon: '⚡' },
+            { id: 'slow', name: 'Time Slow Circle', icon: '🐌' }
         ]
     },
     spellTypes: {
@@ -81,14 +87,23 @@ const tileCategories = {
         borderColor: 'border-red-600',
         type: 'spellType',
         tiles: [
-            { id: 'throw', name: 'Spell Type: Throw', icon: '🤾' },
-            { id: 'cast', name: 'Spell Type: Cast', icon: '🪄' },
-            { id: 'imbue-hit', name: 'Spell Type: Imbue Hit', icon: '⚔️' }
+            { id: 'throw', name: 'Throw', icon: '🤾' },
+            { id: 'cast', name: 'Cast', icon: '🪄' }
         ]
     }
 };
 
 function init() {
+    // Load spells from localStorage if they exist
+    const savedSpells = localStorage.getItem('customSpells');
+    if (savedSpells) {
+        try {
+            spells = JSON.parse(savedSpells);
+        } catch (e) {
+            console.error('Failed to load spells:', e);
+        }
+    }
+    
     renderSpellSlots();
     renderLegend();
     renderPalette();
@@ -377,15 +392,35 @@ function isValidConnection(fromTile, toTile) {
     const fromType = fromTile.category.type;
     const toType = toTile.category.type;
     
-    if (fromType === 'spellType' && (fromTile.id === 'imbue-hit' || fromTile.id === 'imbue-use') && toType === 'spell') return true;
+    // Modifier -> Spell
     if (fromType === 'modifier' && toType === 'spell') return true;
+    
+    // Numerical Mod -> Spell
+    if (fromType === 'numericalMod' && toType === 'spell') return true;
+    
+    // Spell -> Trigger
     if (fromType === 'spell' && toType === 'trigger') return true;
+    
+    // Trigger -> Spell
     if (fromType === 'trigger' && toType === 'spell') return true;
+    
+    // Trigger -> Modifier
     if (fromType === 'trigger' && toType === 'modifier') return true;
-    if (fromType === 'status' && toType === 'spell') return true;
-    if (fromType === 'spell' && toType === 'castType') return true;
-    if (fromType === 'castType' && toType === 'spell') return true;
+    
+    // Trigger -> Effect
+    if (fromType === 'trigger' && toType === 'effect') return true;
+    
+    // Effect -> anything (effects are terminal mostly but can chain)
+    if (fromType === 'effect' && toType === 'spell') return true;
+    
+    // Spell Type -> Spell
+    if (fromType === 'spellType' && toType === 'spell') return true;
+    
+    // Modifier -> Modifier (chain modifiers)
     if (fromType === 'modifier' && toType === 'modifier') return true;
+    
+    // Numerical Mod -> Modifier
+    if (fromType === 'numericalMod' && toType === 'modifier') return true;
     
     return false;
 }
@@ -397,7 +432,8 @@ function isIncomplete(gridIdx) {
     
     const tileType = tile.category.type;
     
-    if (tileType === 'spellType' && (tile.id === 'imbue-hit' || tile.id === 'imbue-use')) {
+    // Spell types need a spell after them
+    if (tileType === 'spellType') {
         const currentExecPos = executionOrder.indexOf(gridIdx);
         if (currentExecPos === -1 || currentExecPos === 7) return true;
         
@@ -407,7 +443,8 @@ function isIncomplete(gridIdx) {
         return !nextTile || nextTile.category.type !== 'spell';
     }
     
-    if (tileType !== 'modifier' && tileType !== 'trigger' && tileType !== 'castType') return false;
+    // Modifiers and numerical mods need a spell
+    if (tileType !== 'modifier' && tileType !== 'trigger' && tileType !== 'numericalMod') return false;
     
     const currentExecPos = executionOrder.indexOf(gridIdx);
     if (currentExecPos === -1) return false;
@@ -421,7 +458,7 @@ function isIncomplete(gridIdx) {
         const nextType = nextTile.category.type;
         
         if (nextType === 'spell') return false;
-        if (nextType === 'modifier' || nextType === 'trigger' || nextType === 'castType') continue;
+        if (nextType === 'modifier' || nextType === 'trigger' || nextType === 'numericalMod') continue;
         
         return true;
     }
